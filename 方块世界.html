@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>方块世界</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;background:#111;font-family:system-ui,-apple-system,sans-serif}
+#game{display:block;width:100vw;height:100vh;image-rendering:pixelated;touch-action:none}
+#hud{position:fixed;left:12px;top:10px;color:white;text-shadow:2px 2px #000;z-index:3;pointer-events:none}
+#title{font-weight:800;font-size:20px}.small{font-size:13px;opacity:.9;margin-top:3px}
+#bar{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);display:flex;gap:4px;z-index:4}
+.slot{width:48px;height:48px;background:#222c;border:2px solid #777;border-radius:5px;color:white;text-align:center;font-size:11px;padding-top:3px}
+.slot.sel{border-color:#ffe36b;box-shadow:0 0 0 2px #000}
+.swatch{width:28px;height:22px;margin:1px auto;border:1px solid #aaa}
+#hint{position:fixed;right:12px;top:12px;color:white;background:#0008;padding:8px 10px;border-radius:8px;font-size:12px;z-index:3;text-align:right}
+#touch{display:none;position:fixed;inset:0;z-index:5;pointer-events:none}
+.btn{pointer-events:auto;position:absolute;width:62px;height:62px;border-radius:50%;background:#ffffff30;border:2px solid #fff8;color:white;font-size:25px}
+#left{left:18px;bottom:25px}#right{left:88px;bottom:25px}#jump{right:88px;bottom:25px}#mine{right:18px;bottom:25px}
+@media (pointer:coarse){#touch{display:block}#hint{display:none}.slot{width:43px;height:43px}}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud"><div id="title">方块世界</div><div class="small" id="stats"></div></div>
+<div id="hint">A/D 或 ←/→ 移动　空格跳跃<br>左键攻击　右键放置　1-8 选方块　E 互动<br>Q 切换武器　B 召唤 Boss　F 保存　R 重生</div>
+<div id="bar"></div>
+<div id="touch">
+<button class="btn" id="left">◀</button><button class="btn" id="right">▶</button>
+<button class="btn" id="jump">▲</button><button class="btn" id="mine">⛏</button>
+</div>
+<script>
+const c=document.getElementById('game'),ctx=c.getContext('2d');
+let W,H,dpr,camX=0,camY=0;
+function resize(){dpr=devicePixelRatio||1;W=innerWidth;H=innerHeight;c.width=W*dpr;c.height=H*dpr;c.style.width=W+'px';c.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0)}
+addEventListener('resize',resize);resize();
+
+const T=32, WW=520, WH=180;
+const B={
+0:{name:'空气',solid:false,color:'transparent'},1:{name:'草地',solid:true,color:'#4da83c'},
+2:{name:'泥土',solid:true,color:'#8a5a32'},3:{name:'石头',solid:true,color:'#686d75'},
+4:{name:'木头',solid:true,color:'#79502e'},5:{name:'矿石',solid:true,color:'#4c9ab0'},
+6:{name:'金矿',solid:true,color:'#d2a83d'},7:{name:'沙子',solid:true,color:'#c9ae72'},
+8:{name:'砖块',solid:true,color:'#765c82'}
+};
+let world=[], surface=[], mobs=[], projectiles=[], particles=[], npcs=[], chest={x:0,y:0,opened:false};
+let inv={1:25,2:10,3:0,4:12,5:0,6:0,7:0,8:0};
+let selected=1, weapon='sword', timeOfDay=.25, boss=null, saved=false;
+
+function rand(n){let x=Math.sin(n*999.91)*43758.5453;return x-Math.floor(x)}
+function noise(x){return Math.sin(x*.11)*3+Math.sin(x*.037)*5+Math.sin(x*.017)*7}
+function generate(){
+ world=Array.from({length:WH},()=>Array(WW).fill(0));surface=[];
+ for(let x=0;x<WW;x++){
+  let h=Math.floor(48+noise(x)); surface[x]=h;
+  for(let y=h;y<WH;y++) world[y][x]=y===h?1:(y<h+5?2:3);
+  if(rand(x*11)>.89&&x>5&&x<WW-6){
+   let th=4+Math.floor(rand(x*17)*4);
+   for(let k=1;k<=th;k++) world[h-k][x]=4;
+   for(let dx=-2;dx<=2;dx++)for(let dy=-3;dy<=0;dy++)
+    if(Math.abs(dx)+Math.abs(dy+3)<4&&world[h+dy]?.[x+dx]===0)world[h+dy][x+dx]=4;
+  }
+ }
+ // Large underground caves
+ for(let i=0;i<125;i++){
+  let cx=8+Math.floor(rand(i+50)*(WW-16)), cy=67+Math.floor(rand(i+90)*95);
+  let rx=3+Math.floor(rand(i+150)*8), ry=2+Math.floor(rand(i+250)*5);
+  for(let y=cy-ry;y<=cy+ry;y++)for(let x=cx-rx;x<=cx+rx;x++)
+   if(x>2&&x<WW-2&&y>surface[x]+8&&((x-cx)**2/rx**2+(y-cy)**2/ry**2<1))world[y][x]=0;
+ }
+ for(let i=0;i<240;i++){
+  let x=4+Math.floor(rand(i+500)*(WW-8)),y=65+Math.floor(rand(i+700)*100);
+  if(world[y][x]===3)world[y][x]=rand(i)>.72?6:5;
+ }
+ // desert patch
+ for(let x=390;x<450;x++){let h=surface[x];for(let y=h;y<h+5;y++)world[y][x]=7}
+ chest.x=100*T;chest.y=(surface[100]-1)*T;chest.opened=false;
+}
+generate();
+
+const p={x:100*T,y:(surface[100]-3)*T,w:22,h:30,vx:0,vy:0,on:false,hp:100,maxhp:100,
+ dmg:18,def:0,coins:20,invuln:0,attackCd:0,weaponLevel:1};
+function spawn(){p.x=100*T;p.y=(surface[100]-3)*T;p.vx=p.vy=0;p.hp=p.maxhp}
+function solidAt(tx,ty){return tx<0||tx>=WW||ty>=WH?true:ty<0?false:B[world[ty][tx]].solid}
+function rectCollide(x,y,w,h){
+ let x0=Math.floor(x/T),x1=Math.floor((x+w-1)/T),y0=Math.floor(y/T),y1=Math.floor((y+h-1)/T);
+ for(let yy=y0;yy<=y1;yy++)for(let xx=x0;xx<=x1;xx++)if(solidAt(xx,yy))return true;
+ return false;
+}
+function move(dt){
+ let left=keys['a']||keys['ArrowLeft'],right=keys['d']||keys['ArrowRight'];
+ if(left)p.vx-=900*dt;if(right)p.vx+=900*dt;
+ p.vx*=Math.pow(.0007,dt);p.vx=Math.max(-250,Math.min(250,p.vx));p.vy+=1200*dt;
+ if(p.vy>850)p.vy=850;
+ let nx=p.x+p.vx*dt;if(!rectCollide(nx,p.y,p.w,p.h))p.x=nx;else p.vx=0;
+ let ny=p.y+p.vy*dt;
+ if(!rectCollide(p.x,ny,p.w,p.h)){p.y=ny;p.on=false}
+ else{if(p.vy>0){p.y=Math.floor((p.y+p.h)/T)*T-p.h;p.on=true}else p.y=(Math.floor(p.y/T)+1)*T;p.vy=0}
+ if(p.invuln>0)p.invuln-=dt;if(p.attackCd>0)p.attackCd-=dt;
+}
+function jump(){if(p.on){p.vy=-520;p.on=false}}
+function tileAtScreen(x,y){return{x:Math.floor((x+camX)/T),y:Math.floor((y+camY)/T)}}
+function reach(t){return Math.hypot(t.x*T+16-(p.x+11),t.y*T+16-(p.y+15))<T*6}
+
+function mine(){
+ let t=tileAtScreen(mouse.x,mouse.y);if(!reach(t)||t.x<0||t.x>=WW||t.y<0||t.y>=WH)return;
+ let id=world[t.y][t.x];if(id){world[t.y][t.x]=0;inv[id]=(inv[id]||0)+1;burst(t.x*T+16-camX,t.y*T+16-camY)}
+}
+function place(){
+ let t=tileAtScreen(mouse.x,mouse.y),id=selected;if(!reach(t)||world[t.y]?.[t.x]!==0||(inv[id]||0)<=0)return;
+ let bx=t.x*T,by=t.y*T;if(bx<p.x+p.w&&bx+T>p.x&&by<p.y+p.h&&by+T>p.y)return;
+ world[t.y][t.x]=id;inv[id]--;
+}
+function attack(){
+ if(p.attackCd>0)return;p.attackCd=.35;
+ let dir=mouse.x+camX>p.x+11?1:-1;
+ if(weapon==='bow'){projectiles.push({x:p.x+11,y:p.y+12,vx:dir*650,vy:-40,dmg:p.dmg+8,life:1.5})}
+ else{
+  let range=72;
+  for(let m of mobs){let dx=m.x-(p.x+11),dy=m.y-(p.y+15);if(Math.abs(dx)<range&&Math.abs(dy)<55&&dx*dir>0){m.hp-=p.dmg;burst(m.x-camX,m.y-camY);}}
+  if(boss&&Math.abs(boss.x-p.x)<100&&Math.abs(boss.y-p.y)<70)boss.hp-=p.dmg;
+ }
+}
+function hurt(n){if(p.invuln>0)return;p.hp-=Math.max(1,n-p.def);p.invuln=.8;burst(p.x-camX,p.y-camY);if(p.hp<=0){p.coins=Math.floor(p.coins*.75);spawn()}}
+function spawnMob(x,y,type='slime'){
+ mobs.push({x,y,w:26,h:24,vx:0,vy:0,hp:type==='bat'?30:45,maxhp:type==='bat'?30:45,type,jump:0,hit:0})
+}
+function spawnWave(){
+ let x=Math.floor((camX/T)+(Math.random()>.5?25:-10));x=Math.max(4,Math.min(WW-5,x));
+ let y=surface[x]*T-28;
+ if(timeOfDay>.52)spawnMob(x*T,y,Math.random()>.7?'bat':'slime');
+}
+function updateMobs(dt){
+ if(Math.random()<.018&&mobs.length<12&&timeOfDay>.55)spawnWave();
+ for(let i=mobs.length-1;i>=0;i--){
+  let m=mobs[i],dx=p.x-m.x,dy=p.y-m.y;
+  m.hit=Math.max(0,m.hit-dt);m.vy+=1000*dt;
+  if(m.type==='bat'){m.vx+=Math.sign(dx)*180*dt;m.vy+=Math.sign(dy)*120*dt}
+  else{m.vx+=Math.sign(dx)*250*dt;if(Math.abs(dx)<160&&m.jump<=0&&m.y+30>p.y-20){m.vy=-420;m.jump=1.1}}
+  m.vx*=Math.pow(.02,dt);m.vx=Math.max(-170,Math.min(170,m.vx));
+  let nx=m.x+m.vx*dt;if(!rectCollide(nx,m.y,m.w,m.h))m.x=nx;else m.vx*=-.5;
+  let ny=m.y+m.vy*dt;if(!rectCollide(m.x,ny,m.w,m.h))m.y=ny;else m.vy=0;
+  m.jump-=dt;
+  if(Math.abs(m.x-p.x)<30&&Math.abs(m.y-p.y)<38)hurt(12);
+  if(m.hp<=0){p.coins+=m.type==='bat'?5:3;burst(m.x-camX,m.y-camY);mobs.splice(i,1)}
+ }
+}
+function updateProjectiles(dt){
+ for(let i=projectiles.length-1;i>=0;i--){let q=projectiles[i];q.x+=q.vx*dt;q.y+=q.vy*dt;q.vy+=180*dt;q.life-=dt;
+  for(let m of mobs)if(Math.abs(q.x-m.x)<24&&Math.abs(q.y-m.y)<28){m.hp-=q.dmg;q.life=0}
+  if(boss&&Math.abs(q.x-boss.x)<45&&Math.abs(q.y-boss.y)<55){boss.hp-=q.dmg;q.life=0}
+  if(q.life<=0||q.x<0||q.x>WW*T||rectCollide(q.x,q.y,4,4))projectiles.splice(i,1);
+ }
+}
+function summonBoss(){
+ if(boss)return;
+ boss={x:p.x+450,y:p.y-120,w:90,h:90,vx:0,vy:0,hp:900,maxhp:900,phase:0,cd:1};
+}
+function updateBoss(dt){
+ if(!boss)return;let dx=p.x-boss.x,dy=p.y-boss.y;
+ boss.vx+=Math.sign(dx)*90*dt;boss.vx*=Math.pow(.1,dt);boss.vx=Math.max(-120,Math.min(120,boss.vx));
+ boss.x+=boss.vx*dt;boss.y+=Math.sin(performance.now()/400)*30*dt;
+ boss.cd-=dt;if(boss.cd<=0){boss.cd=1.4;projectiles.push({x:boss.x,y:boss.y,vx:Math.sign(dx)*260,vy:Math.sign(dy)*70,dmg:22,life:3,enemy:true})}
+ if(Math.abs(dx)<65&&Math.abs(dy)<70)hurt(25);
+ if(boss.hp<=0){p.coins+=200;boss=null;alert('Boss 已被击败！获得 200 金币！')}
+}
+function updateEnemyShots(dt){
+ for(let i=projectiles.length-1;i>=0;i--){let q=projectiles[i];if(!q.enemy)continue;
+  if(Math.hypot(q.x-(p.x+11),q.y-(p.y+15))<24){hurt(q.dmg);q.life=0}
+ }
+}
+function burst(x,y){for(let i=0;i<6;i++)particles.push({x,y,vx:(Math.random()-.5)*100,vy:(Math.random()-.5)*100,life:.4})}
+function updateParticles(dt){for(let i=particles.length-1;i>=0;i--){let a=particles[i];a.x+=a.vx*dt;a.y+=a.vy*dt;a.life-=dt;if(a.life<=0)particles.splice(i,1)}}
+
+function draw(){
+ let daylight=(Math.sin(timeOfDay*Math.PI*2-Math.PI/2)+1)/2;
+ ctx.fillStyle=`rgb(${25+55*daylight},${45+75*daylight},${85+100*daylight})`;ctx.fillRect(0,0,W,H);
+ camX=Math.max(0,Math.min(p.x-W/2,WW*T-W));camY=Math.max(0,Math.min(p.y-H*.48,WH*T-H));
+ let x0=Math.floor(camX/T)-1,x1=Math.ceil((camX+W)/T)+1,y0=Math.floor(camY/T)-1,y1=Math.ceil((camY+H)/T)+1;
+ for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){if(x<0||x>=WW||y<0||y>=WH)continue;let id=world[y][x];if(!id)continue;
+  ctx.fillStyle=B[id].color;ctx.fillRect(x*T-camX,y*T-camY,T,T);ctx.strokeStyle='#0002';ctx.strokeRect(x*T-camX,y*T-camY,T,T);
+  if(id===1){ctx.fillStyle='#76d34e';ctx.fillRect(x*T-camX,y*T-camY,T,5)}
+  if(id===5||id===6){ctx.fillStyle=id===6?'#ffe27b':'#9ad7e8';ctx.fillRect(x*T-camX+8,y*T-camY+8,8,8)}
+ }
+ // chest
+ ctx.fillStyle='#a56b31';ctx.fillRect(chest.x-camX,chest.y-camY,28,20);ctx.fillStyle='#f2c94c';ctx.fillRect(chest.x-camX+12,chest.y-camY+7,5,6);
+ // NPC
+ for(let n of npcs){ctx.fillStyle='#d8b18a';ctx.fillRect(n.x-camX,n.y-camY,22,18);ctx.fillStyle='#4f82b8';ctx.fillRect(n.x-camX,n.y-camY+18,24,28);ctx.fillStyle='white';ctx.fillText(n.name,n.x-camX-8,n.y-camY-7)}
+ // mobs
+ for(let m of mobs){ctx.fillStyle=m.type==='bat'?'#754f9c':'#68c95a';ctx.fillRect(m.x-camX,m.y-camY,m.w,m.h);ctx.fillStyle='#111';ctx.fillRect(m.x-camX+6,m.y-camY+7,4,4);ctx.fillRect(m.x-camX+16,m.y-camY+7,4,4);
+  ctx.fillStyle='#222';ctx.fillRect(m.x-camX,m.y-camY-6,m.w,3);ctx.fillStyle='#7ee35f';ctx.fillRect(m.x-camX,m.y-camY-6,m.w*(m.hp/m.maxhp),3)}
+ if(boss){ctx.fillStyle='#8d334f';ctx.fillRect(boss.x-camX,boss.y-camY,boss.w,boss.h);ctx.fillStyle='#ffdb58';ctx.fillRect(boss.x-camX+18,boss.y-camY+22,12,12);ctx.fillRect(boss.x-camX+60,boss.y-camY+22,12,12)}
+ for(let q of projectiles){ctx.fillStyle=q.enemy?'#ff6b6b':'#ffe07a';ctx.fillRect(q.x-camX-4,q.y-camY-4,8,8)}
+ // player
+ if(p.invuln<=0||Math.floor(performance.now()/80)%2){ctx.fillStyle='#f2c39b';ctx.fillRect(p.x-camX+3,p.y-camY,16,15);ctx.fillStyle='#3b68a8';ctx.fillRect(p.x-camX,p.y-camY+15,p.w,p.h-15);ctx.fillStyle='#222';ctx.fillRect(p.x-camX+5,p.y-camY+6,3,3);ctx.fillRect(p.x-camX+14,p.y-camY+6,3,3)}
+ for(let a of particles){ctx.fillStyle='#fff';ctx.fillRect(a.x-2,a.y-2,4,4)}
+ // darkness underground/night
+ let underground=p.y/T>surface[Math.max(0,Math.min(WW-1,Math.floor(p.x/T)))] + 7;
+ if(underground||daylight<.22){ctx.fillStyle=`rgba(0,0,20,${underground?.48:.3})`;ctx.fillRect(0,0,W,H)}
+ if(boss){ctx.fillStyle='#111c';ctx.fillRect(W*.18,16,W*.64,16);ctx.fillStyle='#d84b5e';ctx.fillRect(W*.18,16,W*.64*(boss.hp/boss.maxhp),16);ctx.fillStyle='white';ctx.textAlign='center';ctx.fillText('地下领主',W/2,29);ctx.textAlign='left'}
+ let t=tileAtScreen(mouse.x,mouse.y);if(reach(t)&&t.x>=0&&t.y>=0&&t.x<WW&&t.y<WH){ctx.strokeStyle='white';ctx.lineWidth=2;ctx.strokeRect(t.x*T-camX+1,t.y*T-camY+1,T-2,T-2)}
+ updateHUD(daylight);
+}
+function updateHUD(daylight){
+ document.getElementById('stats').innerHTML=`❤ ${Math.max(0,Math.floor(p.hp))}/${p.maxhp}　🪙 ${p.coins}　⚔ ${weapon==='sword'?'剑':'弓'}　${daylight>.5?'☀ 白天':'☾ 夜晚'}<br>世界：${WW}×${WH}　装备防御：${p.def}`;
+}
+function setupBar(){let bar=document.getElementById('bar');bar.innerHTML='';
+ [[1,'草'],[2,'泥'],[3,'石'],[4,'木'],[5,'矿'],[6,'金'],[7,'沙'],[8,'砖']].forEach((v,i)=>{let d=document.createElement('div');d.className='slot'+(selected===v[0]?' sel':'');d.innerHTML=`<div class="swatch" style="background:${B[v[0]].color}"></div>${i+1} ${v[1]}<br><b>${inv[v[0]]||0}</b>`;d.onclick=()=>selected=v[0];bar.appendChild(d)})}
+setInterval(setupBar,300);setupBar();
+
+function save(){
+ let data={world,surface,p:{x:p.x,y:p.y,hp:p.hp,coins:p.coins,maxhp:p.maxhp,def:p.def,dmg:p.dmg},inv,timeOfDay,weapon,npcs,chest,boss};
+ localStorage.setItem('blockWorldSave',JSON.stringify(data));saved=true;
+}
+function load(){
+ let s=localStorage.getItem('blockWorldSave');if(!s)return false;
+ try{let d=JSON.parse(s);world=d.world;surface=d.surface;Object.assign(p,d.p);Object.assign(inv,d.inv);timeOfDay=d.timeOfDay;weapon=d.weapon;npcs=d.npcs||[];chest=d.chest||chest;boss=d.boss||null;return true}catch(e){return false}
+}
+function initNPC(){if(!npcs.length)npcs.push({x:106*T,y:(surface[106]-1)*T,name:'探险家'})}
+if(!load())initNPC();
+
+const keys={};let mouse={x:0,y:0};
+addEventListener('keydown',e=>{
+ keys[e.key]=true;
+ if(e.code==='Space'){e.preventDefault();jump()}
+ if(e.key>='1'&&e.key<='8'){let map=[1,2,3,4,5,6,7,8];selected=map[+e.key-1]}
+ if(e.key.toLowerCase()==='q')weapon=weapon==='sword'?'bow':'sword';
+ if(e.key.toLowerCase()==='b')summonBoss();
+ if(e.key.toLowerCase()==='e'){
+  let dx=Math.abs(p.x-chest.x),dy=Math.abs(p.y-chest.y);if(dx<70&&dy<70&&!chest.opened){chest.opened=true;inv[6]=(inv[6]||0)+8;p.coins+=30;alert('宝箱打开！获得 8 金矿和 30 金币。')}
+  if(Math.abs(p.x-npcs[0]?.x)<80){p.def=Math.min(10,p.def+2);p.maxhp=Math.min(160,p.maxhp+10);p.hp=p.maxhp;alert('探险家帮你升级了装备：生命上限 +10，防御 +2！')}
+ }
+ if(e.key.toLowerCase()==='f')save();
+ if(e.key.toLowerCase()==='r')spawn();
+});
+addEventListener('keyup',e=>keys[e.key]=false);
+c.addEventListener('pointermove',e=>{mouse.x=e.clientX;mouse.y=e.clientY});
+c.addEventListener('pointerdown',e=>{mouse.x=e.clientX;mouse.y=e.clientY;if(e.button===0){attack()}else if(e.button===2)place()});
+c.addEventListener('contextmenu',e=>e.preventDefault());
+
+// 手机按钮：左/右/跳/攻击
+function bind(id,down,up){let b=document.getElementById(id);b.onpointerdown=e=>{e.preventDefault();down()};b.onpointerup=e=>{e.preventDefault();up&&up()}}
+bind('left',()=>keys['ArrowLeft']=true,()=>keys['ArrowLeft']=false);
+bind('right',()=>keys['ArrowRight']=true,()=>keys['ArrowRight']=false);
+bind('jump',jump);bind('mine',attack);
+
+// 手机长按“挖掘”按钮不够方便：点击右下角按钮攻击，选中方块后点击世界仍可挖。
+setInterval(save,15000);
+
+let last=performance.now();
+function loop(now){
+ let dt=Math.min(.033,(now-last)/1000);last=now;
+ move(dt);updateMobs(dt);updateProjectiles(dt);updateBoss(dt);updateEnemyShots(dt);updateParticles(dt);
+ timeOfDay=(timeOfDay+dt/180)%1;
+ draw();requestAnimationFrame(loop)
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
