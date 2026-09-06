@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>SONORA · 我的音乐</title>
+<style>
+*{box-sizing:border-box}
+:root{
+  --bg:#090909;--panel:#121212;--panel2:#181818;--text:#fff;--muted:#a7a7a7;
+  --line:#292929;--accent:#1ed760;
+}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
+button,input{font:inherit}
+.app{min-height:100vh;padding-bottom:92px}
+.topbar{height:68px;display:flex;align-items:center;gap:18px;padding:0 22px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(9,9,9,.94);backdrop-filter:blur(18px);z-index:20}
+.logo{font-size:23px;font-weight:800;letter-spacing:2px}
+.search{flex:1;max-width:520px;margin:auto}
+.search input{width:100%;background:#242424;border:0;border-radius:24px;color:#fff;padding:12px 18px;outline:none}
+.avatar-btn{width:40px;height:40px;border:0;border-radius:50%;background:linear-gradient(135deg,#555,#181818);color:#fff;font-weight:800;cursor:pointer}
+.layout{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 68px)}
+.sidebar{border-right:1px solid var(--line);padding:22px 14px}
+.nav{display:flex;flex-direction:column;gap:7px}
+.nav button{border:0;background:transparent;color:#aaa;text-align:left;padding:13px 14px;border-radius:9px;cursor:pointer}
+.nav button.active,.nav button:hover{background:#202020;color:#fff}
+.main{padding:28px;max-width:1400px;width:100%;margin:auto}
+.profile{display:flex;align-items:center;gap:22px;background:linear-gradient(135deg,#232323,#121212);border-radius:18px;padding:24px;margin-bottom:26px}
+.big-avatar{width:96px;height:96px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#777,#202020);font-size:28px;font-weight:800;box-shadow:0 8px 30px #0008}
+.profile h1{margin:0 0 7px;font-size:30px}
+.profile p{margin:0;color:var(--muted)}
+.stats{margin-left:auto;display:flex;gap:28px;text-align:center}
+.stat b{display:block;font-size:20px}.stat span{font-size:12px;color:var(--muted)}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:25px}
+.action{border:0;border-radius:22px;padding:11px 17px;background:#fff;color:#000;font-weight:700;cursor:pointer}
+.action.secondary{background:#252525;color:#fff}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:15px}
+.section-head h2{margin:0;font-size:23px}
+.empty{padding:48px 20px;text-align:center;background:var(--panel);border-radius:14px;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:16px}
+.card{background:var(--panel);padding:14px;border-radius:12px;position:relative;transition:.2s}
+.card:hover{background:#1c1c1c;transform:translateY(-2px)}
+.cover{height:160px;border-radius:8px;background:linear-gradient(135deg,#303030,#111);display:grid;place-items:center;font-size:42px;margin-bottom:12px}
+.card-title{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-sub{font-size:13px;color:var(--muted);margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-actions{display:flex;align-items:center;gap:8px;margin-top:12px}
+.play{border:0;background:#fff;color:#000;border-radius:50%;width:38px;height:38px;cursor:pointer;font-size:16px}
+.heart{border:0;background:transparent;color:#777;font-size:22px;cursor:pointer;padding:4px}
+.heart.on{color:var(--accent)}
+.player{position:fixed;left:0;right:0;bottom:0;height:82px;background:rgba(18,18,18,.97);border-top:1px solid #292929;display:flex;align-items:center;gap:18px;padding:10px 20px;z-index:30}
+.now{width:240px;min-width:0}.now-title{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.now-sub{font-size:12px;color:var(--muted)}
+.controls{display:flex;align-items:center;gap:13px}
+.controls button{border:0;background:transparent;color:#fff;cursor:pointer;font-size:18px}
+.mainplay{width:38px;height:38px;border-radius:50%;background:#fff!important;color:#000!important}
+.progress-wrap{flex:1;display:flex;align-items:center;gap:10px}
+.progress{height:4px;background:#444;border-radius:5px;flex:1;cursor:pointer}
+.progress i{display:block;height:100%;width:0;background:#fff;border-radius:5px}
+.time{font-size:11px;color:#999;min-width:70px;text-align:right}
+.hidden{display:none!important}
+.profile-panel{background:#171717;border:1px solid #292929;border-radius:14px;padding:20px;margin-bottom:24px}
+.profile-panel h3{margin-top:0}
+.profile-row{display:flex;align-items:center;gap:15px}
+.mini-avatar{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;background:#333;font-weight:800}
+input[type=file]{display:none}
+@media(max-width:760px){
+  .topbar{padding:0 12px;height:62px}.logo{font-size:18px}.layout{display:block}
+  .sidebar{border-right:0;border-bottom:1px solid var(--line);padding:7px 10px;overflow:auto}
+  .nav{flex-direction:row;min-width:max-content}.nav button{padding:9px 12px}
+  .main{padding:16px 14px}.profile{padding:18px;gap:15px}.big-avatar{width:70px;height:70px;font-size:20px}
+  .profile h1{font-size:22px}.stats{display:none}.search{max-width:none}
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.cover{height:145px}
+  .player{height:76px;padding:8px 12px;gap:10px}.now{width:125px}.progress-wrap{position:absolute;left:12px;right:12px;top:-3px}
+  .time{display:none}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="logo">SONORA</div>
+    <div class="search"><input id="search" placeholder="搜索音乐、歌手或专辑"></div>
+    <button class="avatar-btn" id="avatarTop">ME</button>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <nav class="nav">
+        <button class="active" data-view="home">⌂ 我的音乐</button>
+        <button data-view="favorites">♥ 我的收藏</button>
+        <button data-view="profile">◉ 我的主页</button>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <section class="profile">
+        <div class="big-avatar">ME</div>
+        <div>
+          <h1>我的音乐</h1>
+          <p>属于你的私人音乐空间</p>
+        </div>
+        <div class="stats">
+          <div class="stat"><b id="songCount">0</b><span>歌曲</span></div>
+          <div class="stat"><b id="favCount">0</b><span>收藏</span></div>
+        </div>
+      </section>
+
+      <section id="profilePanel" class="profile-panel hidden">
+        <div class="profile-row">
+          <div class="mini-avatar">ME</div>
+          <div><h3 style="margin:0 0 5px">我的主页</h3><div style="color:#999;font-size:13px">SONORA Music Player</div></div>
+        </div>
+      </section>
+
+      <div class="actions">
+        <label class="action" for="fileInput">＋ 导入本地音乐</label>
+        <input id="fileInput" type="file" accept="audio/*" multiple>
+        <button class="action secondary" id="clearBtn">清空本地歌曲</button>
+      </div>
+
+      <section id="homeView">
+        <div class="section-head"><h2>我的音乐</h2></div>
+        <div id="musicGrid" class="grid"></div>
+      </section>
+
+      <section id="favView" class="hidden">
+        <div class="section-head"><h2>我的收藏</h2></div>
+        <div id="favGrid" class="grid"></div>
+      </section>
+    </main>
+  </div>
+
+  <div class="player">
+    <div class="now">
+      <div class="now-title" id="nowTitle">尚未播放音乐</div>
+      <div class="now-sub" id="nowSub">导入音乐后开始播放</div>
+    </div>
+    <div class="controls">
+      <button id="prev">⏮</button>
+      <button class="mainplay" id="play">▶</button>
+      <button id="next">⏭</button>
+    </div>
+    <div class="progress-wrap">
+      <span class="time" id="time">0:00 / 0:00</span>
+      <div class="progress" id="progress"><i></i></div>
+    </div>
+  </div>
+</div>
+
+<audio id="audio"></audio>
+
+<script>
+const $=id=>document.getElementById(id);
+let tracks=[], current=-1, favorites=new Set(), objectUrls=[];
+
+function escapeHTML(s){
+  return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function render(){
+  const q=$('search').value.trim().toLowerCase();
+  const filtered=tracks.filter(t=>(t.name+' '+t.artist).toLowerCase().includes(q));
+  $('musicGrid').innerHTML=filtered.length?filtered.map(t=>card(t)).join(''):`<div class="empty" style="grid-column:1/-1">${tracks.length?'没有找到匹配的音乐':'还没有音乐，点击“导入本地音乐”添加歌曲'}</div>`;
+  const favs=tracks.filter(t=>favorites.has(t.id) && (t.name+' '+t.artist).toLowerCase().includes(q));
+  $('favGrid').innerHTML=favs.length?favs.map(t=>card(t)).join(''):`<div class="empty" style="grid-column:1/-1">这里还没有收藏的音乐 ❤️</div>`;
+  $('songCount').textContent=tracks.length;
+  $('favCount').textContent=favorites.size;
+}
+function card(t){
+  const idx=tracks.indexOf(t), on=favorites.has(t.id);
+  return `<div class="card">
+    <div class="cover">♫</div>
+    <div class="card-title">${escapeHTML(t.name)}</div>
+    <div class="card-sub">${escapeHTML(t.artist)}</div>
+    <div class="card-actions">
+      <button class="play" onclick="playIndex(${idx})">▶</button>
+      <button class="heart ${on?'on':''}" onclick="toggleFav('${t.id}')">${on?'♥':'♡'}</button>
+    </div>
+  </div>`;
+}
+function playIndex(i){
+  if(i<0||i>=tracks.length)return;
+  current=i;
+  const t=tracks[i];
+  $('audio').src=t.url;
+  $('audio').play();
+  $('nowTitle').textContent=t.name;
+  $('nowSub').textContent=t.artist;
+  $('play').textContent='Ⅱ';
+}
+function toggleFav(id){
+  favorites.has(id)?favorites.delete(id):favorites.add(id);
+  render();
+}
+$('fileInput').addEventListener('change',e=>{
+  [...e.target.files].forEach(file=>{
+    const id=crypto.randomUUID();
+    const url=URL.createObjectURL(file);
+    objectUrls.push(url);
+    tracks.push({id,name:file.name.replace(/\.[^.]+$/,''),artist:'本地音乐',url});
+  });
+  e.target.value='';
+  render();
+});
+$('clearBtn').onclick=()=>{
+  objectUrls.forEach(URL.revokeObjectURL);
+  objectUrls=[];tracks=[];favorites.clear();current=-1;
+  $('audio').pause();$('audio').removeAttribute('src');
+  $('nowTitle').textContent='尚未播放音乐';$('nowSub').textContent='导入音乐后开始播放';$('play').textContent='▶';
+  render();
+};
+$('play').onclick=()=>{
+  if(current<0 && tracks.length) return playIndex(0);
+  if($('audio').paused){$('audio').play();$('play').textContent='Ⅱ'}
+  else{$('audio').pause();$('play').textContent='▶'}
+};
+$('prev').onclick=()=>{if(!tracks.length)return;playIndex((current-1+tracks.length)%tracks.length)};
+$('next').onclick=()=>{if(!tracks.length)return;playIndex((current+1)%tracks.length)};
+$('audio').addEventListener('ended',()=>{if(tracks.length)playIndex((current+1)%tracks.length)});
+$('audio').addEventListener('timeupdate',()=>{
+  const a=$('audio'), pct=a.duration?(a.currentTime/a.duration)*100:0;
+  $('progress').firstElementChild.style.width=pct+'%';
+  const f=s=>{s=Math.floor(s||0);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+  $('time').textContent=f(a.currentTime)+' / '+f(a.duration);
+});
+$('progress').onclick=e=>{
+  const a=$('audio');if(!a.duration)return;
+  const r=e.currentTarget.getBoundingClientRect();
+  a.currentTime=((e.clientX-r.left)/r.width)*a.duration;
+};
+$('search').addEventListener('input',render);
+
+document.querySelectorAll('.nav button').forEach(btn=>{
+  btn.onclick=()=>{
+    document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const v=btn.dataset.view;
+    $('homeView').classList.toggle('hidden',v==='favorites'||v==='profile');
+    $('favView').classList.toggle('hidden',v!=='favorites');
+    $('profilePanel').classList.toggle('hidden',v!=='profile');
+    if(v==='profile'){$('homeView').classList.add('hidden');$('favView').classList.add('hidden')}
+    if(v==='home'){$('homeView').classList.remove('hidden')}
+  };
+});
+$('avatarTop').onclick=()=>{
+  document.querySelector('[data-view="profile"]').click();
+};
+render();
+</script>
+</body>
+</html>
