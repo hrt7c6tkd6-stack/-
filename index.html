@@ -188,7 +188,7 @@ function render() {
 function card(t) {
     const idx = tracks.indexOf(t), on = favorites.has(t.id);
     return `<div class="card">
-        <div class="cover">♫</div>
+        <div class="cover">${t.cover ? `<img src="${t.cover}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">` : '♫'}</div>
         <div class="card-title">${escapeHTML(t.name)}</div>
         <div class="card-sub">${escapeHTML(t.artist)}</div>
         <div class="card-actions">
