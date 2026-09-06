@@ -2,36 +2,43 @@
   {
     "name": "娘子",
     "artist": "本地音乐",
-    "url": "niangzi.mp3"
+    "url": "niangzi.mp3",
+    "cover": "IMG_7091.JPG"
   },
   {
     "name": "反方向的钟",
     "artist": "本地音乐",
-    "url": "ffxdz.mp3"
+    "url": "ffxdz.mp3",
+    "cover": "IMG_7091.JPG"
   },
   {
     "name": "可爱女人",
     "artist": "本地音乐",
-    "url": "keainvren.mp3"
+    "url": "keainvren.mp3",
+    "cover": "IMG_7091.JPG"
   },
   {
     "name": "龙卷风",
     "artist": "本地音乐",
-    "url": "longjuanfeng.mp3"
+    "url": "longjuanfeng.mp3",
+    "cover": "IMG_7091.JPG"
   },
   {
     "name": "完美主义",
     "artist": "本地音乐",
-    "url": "wanmeizhuyi.mp3"
+    "url": "wanmeizhuyi.mp3",
+    "cover": "IMG_7091.JPG"
   },
   {
     "name": "星晴",
     "artist": "本地音乐",
-    "url": "xingqing.mp3"
+    "url": "xingqing.mp3",
+    "cover": "IMG_7091.JPG"
   },
   {
     "name": "伊斯坦堡",
     "artist": "本地音乐",
-    "url": "yisitanbao.mp3"
+    "url": "yisitanbao.mp3",
+    "cover": "IMG_7091.JPG"
   }
 ]
