@@ -148,24 +148,27 @@ input[type=file]{display:none}
 <audio id="audio"></audio>
 <script>
 const $=id=>document.getElementById(id);
-let tracks=[], current=-1, favorites=new Set(), objectUrls=[];
-
-// ===== 新增：加载服务器上的默认歌曲 =====
+let tracks=[], current=-1, favorites=new Set(), 
+// ===== 从 songs.json 加载歌曲列表 =====
 function loadServerSongs() {
-  if (tracks.length === 0) {
-    // 你可以在这里添加多首服务器歌曲
-    tracks.push({
-      id: crypto.randomUUID(),
-      name: '娘子',
-      artist: '本地音乐',
-      url: 'niangzi.mp3'
-    });
-    // 如果有更多歌曲，继续 push
-    // tracks.push({ id: crypto.randomUUID(), name: '另一首歌', artist: '歌手', url: 'song2.mp3' });
-  }
+    fetch('songs.json')
+        .then(res => res.json())
+        .then(data => {
+            if (tracks.length === 0 && data.length) {
+                data.forEach(song => {
+                    tracks.push({
+                        id: crypto.randomUUID(),
+                        name: song.name,
+                        artist: song.artist || '未知歌手',
+                        url: song.url
+                    });
+                });
+                render();
+            }
+        })
+        .catch(() => console.log('songs.json 加载失败'));
 }
-// =====================================
-
+// ============================================
 function escapeHTML(s){
   return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
