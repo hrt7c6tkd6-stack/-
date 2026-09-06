@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#fff">
+<title>FILMORA · 我的电影库</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#fff;color:#17181d;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif}
+header{position:sticky;top:0;z-index:10;background:#fffffff5;backdrop-filter:blur(18px);border-bottom:1px solid #e8e9ed}.nav{max-width:1050px;margin:auto;padding:15px 18px;display:flex;align-items:center;gap:15px}.logo{font-size:21px;font-weight:900;letter-spacing:2px}.logo span{color:#8065ee}.search{margin-left:auto;width:190px;border:1px solid #dddfe5;background:#f5f6f8;border-radius:12px;padding:10px 13px;outline:none;color:#17181d}
+main{max-width:1050px;margin:auto;padding:30px 18px 60px}.hero{padding:25px 0 25px}.hero h1{font-size:clamp(34px,8vw,60px);line-height:1.05;margin:8px 0 12px;letter-spacing:-2px}.hero p{color:#666b77;line-height:1.7;margin:0;max-width:620px}.upload{margin-top:22px;border:2px dashed #d9dbe3;border-radius:20px;padding:25px;text-align:center;background:#fafbfc}.upload-icon{font-size:40px}.upload p{color:#777c88;font-size:14px;margin:8px 0 16px}.file-label{display:inline-block;background:#8065ee;color:#fff;border-radius:12px;padding:12px 18px;font-weight:750;cursor:pointer}#fileInput{display:none}
+.section{font-size:21px;font-weight:850;margin:28px 0 15px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:15px}.card{border:1px solid #e3e5ea;border-radius:17px;overflow:hidden;background:#fff;box-shadow:0 6px 20px #0000000a}.poster{aspect-ratio:2/3;background:linear-gradient(145deg,#eceef3,#d5d8e1);display:flex;align-items:flex-end;padding:13px;position:relative;overflow:hidden}.poster video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.poster b{position:relative;z-index:2;color:white;text-shadow:0 2px 8px #000;font-size:17px}.details{padding:12px}.name{font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.meta{font-size:12px;color:#777c88;margin-top:5px}.play{margin-top:9px;width:100%;background:#17181d;color:white;padding:9px}.empty{text-align:center;color:#858a95;padding:40px;border:1px dashed #dddfe5;border-radius:17px}.player{display:none;position:fixed;inset:0;background:#000;z-index:50;align-items:center;justify-content:center}.player.show{display:flex}.player video{width:100%;max-height:100%;}.close{position:absolute;right:16px;top:calc(15px + env(safe-area-inset-top));z-index:3;background:#ffffffdd;color:#111;border-radius:50%;width:42px;height:42px;padding:0;font-size:22px}.note{font-size:12px;color:#8a8e99;line-height:1.6;margin-top:22px}
+@media(max-width:750px){.grid{grid-template-columns:repeat(2,1fr)}.search{width:145px}}
+</style>
+</head>
+<body>
+<header><div class="nav"><div class="logo">FILM<span>ORA</span></div><input id="search" class="search" placeholder="搜索电影…" autocomplete="off"></div></header>
+<main>
+<section class="hero">
+<div style="color:#8065ee;font-size:12px;font-weight:800;letter-spacing:2px">MY MOVIE LIBRARY</div>
+<h1>把你的电影，<br>放进这里。</h1>
+<p>从 iPhone「文件」App 导入视频，建立属于自己的私人电影库。点击电影即可播放。</p>
+<div class="upload">
+<div class="upload-icon">🎬</div><strong>导入电影文件</strong>
+<p>支持浏览器能够播放的常见视频格式，例如 MP4、MOV、M4V、WebM。</p>
+<label class="file-label" for="fileInput">＋ 选择电影</label>
+<input id="fileInput" type="file" accept="video/*" multiple>
+</div>
+</section>
+<div class="section">我的电影</div>
+<div id="grid" class="grid"></div><div id="empty" class="empty">还没有电影<br><small>点击上面的「选择电影」导入视频</small></div>
+<div class="note">说明：电影文件只在当前浏览器会话中用于播放，不会自动上传到互联网。关闭页面后，出于 iPhone 浏览器的存储限制，文件本身可能需要重新选择。</div>
+</main>
+<div id="player" class="player"><button class="close" onclick="closePlayer()">×</button><video id="video" controls playsinline></video></div>
+<script>
+const input=document.getElementById('fileInput'),grid=document.getElementById('grid'),empty=document.getElementById('empty'),search=document.getElementById('search');
+let movies=[];
+function esc(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function size(n){return n<1048576?(n/1024).toFixed(1)+' KB':(n/1048576).toFixed(1)+' MB'}
+function render(q=''){
+ grid.innerHTML='';
+ const arr=movies.filter(x=>x.name.toLowerCase().includes(q.toLowerCase()));
+ empty.style.display=arr.length?'none':'block';
+ arr.forEach((m,i)=>{
+  const c=document.createElement('div');c.className='card';
+  c.innerHTML=`<div class="poster"><b>${esc(m.name)}</b></div><div class="details"><div class="name">${esc(m.name)}</div><div class="meta">${size(m.size)}</div><button class="play">▶ 播放</button></div>`;
+  c.querySelector('.play').onclick=()=>play(i);grid.appendChild(c);
+ });
+}
+function play(i){const p=document.getElementById('player'),v=document.getElementById('video');v.src=movies[i].url;p.classList.add('show');v.play().catch(()=>{});}
+function closePlayer(){const p=document.getElementById('player'),v=document.getElementById('video');v.pause();v.removeAttribute('src');v.load();p.classList.remove('show')}
+input.addEventListener('change',()=>{
+ [...input.files].forEach(f=>{if(f.type.startsWith('video/'))movies.push({name:f.name,size:f.size,url:URL.createObjectURL(f)})});
+ render();input.value='';
+});
+search.addEventListener('input',e=>render(e.target.value));render();
+</script>
+</body>
+</html>
