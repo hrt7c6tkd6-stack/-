@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#08090d">
+<title>FILMORA · 电影世界</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#ffffff;color:#17181d;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif}
+header{position:sticky;top:0;z-index:10;background:#fffffff2;backdrop-filter:blur(18px);border-bottom:1px solid #ffffff10}
+.nav{max-width:1050px;margin:auto;padding:16px 18px;display:flex;align-items:center;gap:18px}.logo{font-weight:900;letter-spacing:2px;font-size:21px}.logo span{color:#9b7cff}
+.search{margin-left:auto;background:#171922;border:1px solid #292d38;border-radius:13px;padding:10px 13px;color:white;outline:0;width:190px}
+.hero{max-width:1050px;margin:auto;padding:55px 18px 35px;background:radial-gradient(circle at 75% 30%,#eeeaff 0,transparent 38%)}
+.badge{color:#bbaaff;font-size:12px;font-weight:800;letter-spacing:2px}.hero h1{font-size:clamp(36px,8vw,66px);line-height:1;margin:12px 0;max-width:650px;letter-spacing:-2px}.hero p{color:#656a76;max-width:560px;line-height:1.7}.actions{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap}button{border:0;border-radius:12px;padding:12px 17px;font-weight:750;cursor:pointer}.primary{background:#9b7cff;color:white}.secondary{background:#eef0f4;color:#22242b}
+main{max-width:1050px;margin:auto;padding:0 18px 50px}.section{font-size:21px;font-weight:850;margin:28px 0 15px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.card{background:#ffffff;border:1px solid #e5e7ec;box-shadow:0 5px 18px #0000000d;border-radius:16px;overflow:hidden;transition:.2s}.card:hover{transform:translateY(-3px);border-color:#9b7cff}.poster{aspect-ratio:2/3;display:flex;align-items:flex-end;padding:12px;background:linear-gradient(145deg,#e8e9ef,#cfd2dc);position:relative}.poster:after{content:"";position:absolute;inset:0;background:linear-gradient(transparent 45%,#000b)}
+.poster b{z-index:1;font-size:17px}.details{padding:12px}.year{color:#737986;font-size:12px;margin-bottom:7px}.tag{display:inline-block;font-size:10px;background:#f0f1f5;color:#555b68;padding:4px 7px;border-radius:6px;margin-right:4px}
+.empty{display:none;text-align:center;color:#8f94a2;padding:40px}
+footer{text-align:center;color:#8a8e99;font-size:12px;padding:20px}
+@media(max-width:750px){.grid{grid-template-columns:repeat(2,1fr)}.search{width:145px}.hero{padding-top:40px}}
+</style>
+</head>
+<body>
+<header><div class="nav"><div class="logo">FILM<span>ORA</span></div><input id="search" class="search" placeholder="搜索电影…" autocomplete="off"></div></header>
+
+<section class="hero">
+<div class="badge">WELCOME TO THE CINEMA</div>
+<h1>发现下一部<br>值得看的电影。</h1>
+<p>一个简洁的电影发现页面。浏览热门影片、探索不同类型，也可以用搜索快速找到你想看的电影。</p>
+<div class="actions"><button class="primary" onclick="document.getElementById('movies').scrollIntoView({behavior:'smooth'})">开始探索</button><button class="secondary" onclick="randomMovie()">🎲 随机一部</button></div>
+</section>
+
+<main id="movies">
+<div class="section">精选电影</div>
+<div id="grid" class="grid"></div>
+<div id="empty" class="empty">没有找到匹配的电影。</div>
+</main>
+<footer>FILMORA · Movie Discovery · 本页面仅用于电影信息展示</footer>
+
+<script>
+const movies=[
+["盗梦空间","2010","科幻","剧情","Inception"],
+["星际穿越","2014","科幻","剧情","Interstellar"],
+["蝙蝠侠：黑暗骑士","2008","动作","犯罪","The Dark Knight"],
+["楚门的世界","1998","剧情","科幻","The Truman Show"],
+["寄生虫","2019","剧情","惊悚","Parasite"],
+["无间道","2002","犯罪","剧情","Infernal Affairs"],
+["疯狂动物城","2016","动画","喜剧","Zootopia"],
+["蜘蛛侠：平行宇宙","2018","动画","动作","Spider-Man"],
+["银翼杀手2049","2017","科幻","悬疑","Blade Runner 2049"],
+["教父","1972","犯罪","剧情","The Godfather"],
+["千与千寻","2001","动画","奇幻","Spirited Away"],
+["飞越疯人院","1975","剧情","经典","One Flew Over the Cuckoo's Nest"]
+];
+const grid=document.getElementById("grid"),empty=document.getElementById("empty"),search=document.getElementById("search");
+function render(q=""){
+ grid.innerHTML="";
+ const arr=movies.filter(m=>m.join(" ").toLowerCase().includes(q.toLowerCase()));
+ empty.style.display=arr.length?"none":"block";
+ arr.forEach((m,i)=>{
+  const d=document.createElement("div");d.className="card";
+  d.innerHTML=`<div class="poster"><b>${m[0]}</b></div><div class="details"><div class="year">${m[1]}</div><span class="tag">${m[2]}</span><span class="tag">${m[3]}</span></div>`;
+  d.onclick=()=>alert(`🎬 ${m[0]}\n\n年份：${m[1]}\n类型：${m[2]} / ${m[3]}\n英文名：${m[4]}`);
+  grid.appendChild(d);
+ });
+}
+function randomMovie(){const m=movies[Math.floor(Math.random()*movies.length)];alert(`🎲 推荐你看：${m[0]}（${m[1]}）`)}
+search.addEventListener("input",e=>render(e.target.value));render();
+</script>
+</body>
+</html>
